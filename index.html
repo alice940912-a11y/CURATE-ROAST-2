@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>萃藝空間 CURATE & ROAST | 陽明山秘境藝廊</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- ES Module Shims (確保各大瀏覽器支援 Import Map) -->
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  
+  <!-- Import Maps (雲端載入 React 與 Icons) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.294.0"
+      }
+    }
+  </script>
+  
+  <!-- Babel (讓瀏覽器能直接讀懂 React JSX 語法) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* 隱藏滾動條但保持可滾動 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-[#FFFFFF] text-[#1B3829] font-sans antialiased selection:bg-[#C5A880] selection:text-[#FFFFFF]">
+  
+  <!-- React 應用程式掛載點 -->
+  <div id="root"></div>
+
+  <!-- 主要 React 程式碼 -->
+  <script type="text/babel" data-type="module">
+    import React, { useState, useMemo, useEffect, useRef } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import {
+      Calendar, Clock, MapPin, Phone, Instagram, Mail, Car, Sparkles, Coffee,
+      Droplets, Moon, ArrowUpRight, CheckCircle2, X, Menu as MenuIcon, Info,
+      Compass, Eye, ChevronRight, ChevronLeft, ShieldCheck, Globe
+    } from 'lucide-react';
+
+    /* ==========================================
+     * UTILITY COMPONENTS
+     * ========================================== */
+
+    function ScrollReveal({ children, className = '', delay = 0, direction = 'up' }) {
+      const [isVisible, setIsVisible] = useState(false);
+      const elementRef = useRef(null);
+
+      useEffect(() => {
+        const target = elementRef.current;
+        if (!target) return;
+        const observer = new IntersectionObserver(
+          ([entry]) => { setIsVisible(entry.isIntersecting); },
+          { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+        );
+        observer.observe(target);
+        return () => observer.disconnect();
+      }, []);
+
+      const getInitialTransform = () => {
+        switch (direction) {
+          case 'left': return '-translate-x-8';
+          case 'right': return 'translate-x-8';
+          case 'scale': return 'scale-95';
+          case 'up':
+          default: return 'translate-y-8';
+        }
+      };
+
+      return (
+        <div
+          ref={elementRef}
+          style={{ transitionDelay: `${isVisible ? delay : 0}ms` }}
+          className={`transition-all duration-700 ease-out will-change-transform ${
+            isVisible ? 'opacity-100 translate-y-0 translate-x-0 scale-100' : `opacity-0 ${getInitialTransform()}`
+          } ${className}`}
+        >
+          {children}
+        </div>
+      );
+    }
+
+    const CustomDatePicker = ({ value, onChange, t, isEn }) => {
+      const [isOpen, setIsOpen] = useState(false);
+      const initialDate = value ? new Date(value) : new Date();
+      const [viewDate, setViewDate] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+      const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
+
+      const weekdays = isEn ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] : ['日', '一', '二', '三', '四', '五', '六'];
+      const monthNames = isEn
+        ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        : ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+
+      const handlePrevMonth = (e) => {
+        e.preventDefault();
+        setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+      };
+      const handleNextMonth = (e) => {
+        e.preventDefault();
+        setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+      };
+
+      const handleSelectDate = (day) => {
+        const selected = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+        const year = selected.getFullYear();
+        const month = String(selected.getMonth() + 1).padStart(2, '0');
+        const dateStr = String(selected.getDate()).padStart(2, '0');
+        onChange(`${year}-${month}-${dateStr}`);
+        setIsOpen(false);
+      };
+
+      const blanks = Array.from({ length: firstDay }, (_, i) => i);
+      const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+      return (
+        <div className="relative w-full">
+          <div
+            onClick={() => setIsOpen(true)}
+            className="w-full px-4 py-3.5 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] flex items-center justify-between cursor-pointer hover:border-[#1B3829] transition-colors"
+          >
+            <span>{value || t('請選擇日期', 'Select a date')}</span>
+            <Calendar className="w-4 h-4 text-[#C5A880]" />
+          </div>
+
+          {isOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+              <div className="absolute top-full left-0 mt-2 p-5 bg-white border-2 border-[#C5A880] rounded-2xl shadow-xl z-50 w-[300px]">
+                <div className="flex justify-between items-center mb-4">
+                  <button type="button" onClick={handlePrevMonth} className="p-1.5 hover:bg-[#F9F9F6] rounded-full text-[#1B3829] transition-colors"><ChevronLeft className="w-5 h-5" /></button>
+                  <span className="text-sm font-semibold tracking-wider text-[#1B3829]">
+                    {isEn ? `${monthNames[viewDate.getMonth()]} ${viewDate.getFullYear()}` : `${viewDate.getFullYear()}年 ${monthNames[viewDate.getMonth()]}`}
+                  </span>
+                  <button type="button" onClick={handleNextMonth} className="p-1.5 hover:bg-[#F9F9F6] rounded-full text-[#1B3829] transition-colors"><ChevronRight className="w-5 h-5" /></button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                  {weekdays.map(day => (
+                    <div key={day} className="text-xs font-semibold text-[#C5A880] py-1">{day}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {blanks.map(b => <div key={`blank-${b}`} className="p-2" />)}
+                  {days.map(day => {
+                    const dateObj = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+                    const isMonday = dateObj.getDay() === 1;
+                    const isPast = dateObj < today;
+                    const isDisabled = isMonday || isPast;
+                    
+                    const dateString = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+                    const isSelected = value === dateString;
+
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={(e) => { e.preventDefault(); handleSelectDate(day); }}
+                        className={`p-2 text-sm rounded-lg transition-all ${
+                          isDisabled
+                            ? 'text-[#1B3829]/20 cursor-not-allowed bg-gray-50/50'
+                            : isSelected
+                              ? 'bg-[#1B3829] text-white font-bold shadow-md'
+                              : 'text-[#1B3829] hover:bg-[#C5A880]/20 font-medium'
+                        }`}
+                        title={isMonday ? t('週一公休', 'Closed on Mondays') : ''}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    /* ==========================================
+     * DATA MODELS
+     * ========================================== */
+
+    const MENU_CATEGORIES = [
+      { id: 'all', label: '全品項總覽', en: 'ALL SELECTIONS' },
+      { id: 'pairing', label: '藝廊沉浸雙重奏套餐', en: 'EXHIBITION PAIRING' },
+      { id: 'dessert', label: '主廚限定盤飾甜點', en: 'PLATED DESSERTS' },
+      { id: 'pourover', label: '微批次單品手沖', en: 'SINGLE ORIGIN' },
+      { id: 'signature', label: '精品義式與藝術家特調', en: 'SIGNATURE DRINKS' },
+      { id: 'tea_savory', label: '台灣高山茶與輕食', en: 'TEA & SAVORY' }
+    ];
+
+    const MENU_DATA = [
+      {
+        id: 'pair-01', category: 'pairing', name: '《時序・光影流變》單人全區觀展品鑑套餐', enName: 'Chrono Light & Shadow Solo Experience',
+        price: 1280, description: '包含當期「時序空間工作室」特展深度導覽手冊、全區（含二樓秘境展間）觀展通行，搭配主廚依當期主展品創作的《光影解構・煙燻烏龍可可雕塑》盤飾甜點，以及任選一款微批次單品手沖咖啡。',
+        enDescription: 'Includes an in-depth exhibition guide by Chrono Space Studio, full access to all areas, paired with the "Deconstructed Smoked Oolong" dessert inspired by the current exhibition, and a choice of single-origin pour-over coffee.',
+        image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=80',
+        tags: ['當期特展限定', '看展＋品嚐首選'], enTags: ['Exhibition Limited', 'Top Pairing'],
+        caffeineMg: 145, caffeineLabel: '中咖啡因 ~145mg（可換低因）', enCaffeineLabel: 'Med Caffeine ~145mg (Decaf avail.)',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'pair-02', category: 'pairing', name: '《山嵐暮色》雙人夜間藝廊與夜景雙重奏', enName: 'Mountain Mist Night Gallery & Skyline Duo',
+        price: 2480, description: '專為夜間觀展與賞景設計，包含雙人全區特展導覽通行、《白桃伯爵幾何慕斯》與《金箔黑松露生巧克力塔》各一份，搭配兩杯藝術家聯名無酒精特調或莊園手沖咖啡，優先安排全景落地窗夜景席。',
+        enDescription: 'Designed for night viewing. Includes duo exhibition access, "White Peach Earl Grey Mousse" and "Truffle Chocolate Tart", paired with two artist-collab zero-proof mocktails or pour-overs. Priority seating at panoramic night view windows.',
+        image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
+        tags: ['夜間夜景推薦', '雙人套組'], enTags: ['Night View', 'Duo Set'],
+        caffeineMg: 90, caffeineLabel: '低至中咖啡因 ~90mg（可選無咖啡因）', enCaffeineLabel: 'Low-Med Caffeine ~90mg (Caffeine-free avail.)',
+        juicePercent: 35, isCaffeineFree: false
+      },
+      {
+        id: 'pair-03', category: 'pairing', name: '《藏家私享》VIP 策展導覽與主廚客製套組', enName: 'Collector Private Curation & Tasting',
+        price: 1980, description: '由「時序空間工作室」駐館策展人提供 30 分鐘一對一作品導覽，含主廚當日隱藏版盤飾甜點、三款精品咖啡杯測體驗及迎賓無酒精氣泡香檳。',
+        enDescription: 'A 30-min 1-on-1 private tour by our resident curator, featuring a hidden menu plated dessert, a 3-cup specialty coffee cupping experience, and welcome zero-proof champagne.',
+        image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80',
+        tags: ['專人策展導覽', '限量席次'], enTags: ['Private Tour', 'Limited Seats'],
+        caffeineMg: 160, caffeineLabel: '高咖啡因 ~160mg（杯測體驗）', enCaffeineLabel: 'High Caffeine ~160mg (Cupping)',
+        juicePercent: 25, isCaffeineFree: false
+      },
+      {
+        id: 'des-01', category: 'dessert', name: '《光影解構》煙燻烏龍與 75% 莊園可可雕塑', enName: 'Deconstructed Smoked Oolong & 75% Cacao',
+        price: 420, description: '靈感源自當代幾何雕塑作品，以阿里山炭焙烏龍茶慕斯為基底，包覆秘魯單一產區黑巧克力甘納許，佐以可可碎餅與食用金箔點綴。',
+        enDescription: 'Inspired by contemporary geometric sculptures. Alishan charcoal-roasted oolong tea mousse enveloping Peruvian single-origin dark chocolate ganache, adorned with cacao nib crisps and gold leaf.',
+        image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80',
+        tags: ['主廚推薦', '當期特展呼應'], enTags: ["Chef's Pick", 'Exhibition Pairing'],
+        caffeineMg: 38, caffeineLabel: '含茶與可可微咖啡因 ~38mg', enCaffeineLabel: 'Trace Caffeine ~38mg (Tea/Cacao)',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'des-02', category: 'dessert', name: '《白盒子》陽明山野薑花與大溪地香草千層', enName: 'White Cube Ginger Lily Mille-Feuille',
+        price: 380, description: '致敬美術館純白留白空間，以 27 層焦糖化酥皮夾入陽明山新鮮野薑花冷萃卡士達與大溪地香草籽香緹，花香清雅脫俗。',
+        enDescription: 'A tribute to the white cube gallery space. 27 layers of caramelized puff pastry filled with Yangmingshan fresh ginger lily cold-brew custard and Tahitian vanilla bean chantilly.',
+        image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=900&q=80',
+        tags: ['人氣精選', '在地風土'], enTags: ['Popular', 'Local Terroir'],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: null, isCaffeineFree: true
+      },
+      {
+        id: 'des-03', category: 'dessert', name: '《層巒》抹茶柚子與黑芝麻山水盤飾', enName: 'Uji Matcha, Yuzu & Black Sesame Landscape',
+        price: 400, description: '以京都宇治丸久小山園若竹抹茶海綿蛋糕呈現陽明山巒肌理，搭配日本高知縣黃金柚子凝凍與低溫烘焙黑芝麻脆片。',
+        enDescription: 'Kyoto Uji Marukyu Koyamaen Matcha sponge cake resembling mountain textures, paired with Kochi golden yuzu jelly and low-temp roasted black sesame crisps.',
+        image: 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=900&q=80',
+        tags: ['主廚推薦'], enTags: ["Chef's Pick"],
+        caffeineMg: 45, caffeineLabel: '含宇治抹茶咖啡因 ~45mg', enCaffeineLabel: 'Matcha Caffeine ~45mg',
+        juicePercent: 15, isCaffeineFree: false
+      },
+      {
+        id: 'des-04', category: 'dessert', name: '《琥珀時光》焦糖海鹽布蕾與季節無花果塔', enName: 'Salted Caramel Brûlée & Fresh Fig Tart',
+        price: 360, description: '法式手工杏仁塔殼填入炙燒布列塔尼海鹽焦糖布蕾，鋪滿當季新鮮紅無花果與微醺波特酒凍。',
+        enDescription: 'Handmade French almond tart shell filled with torched Brittany sea salt caramel brûlée, topped with seasonal fresh red figs and Port wine jelly.',
+        image: 'https://images.unsplash.com/photo-1519915028121-7d3463d20b13?auto=format&fit=crop&w=900&q=80',
+        tags: ['季節限定'], enTags: ['Seasonal'],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: 20, isCaffeineFree: true
+      },
+      {
+        id: 'des-05', category: 'dessert', name: '《月光雲海》北海道十勝乳酪與白桃玫瑰泡泡', enName: 'Hokkaido Fromage & White Peach Rose Cloud',
+        price: 390, description: '專為夜間賞景設計的輕盈盤飾甜點，以零咖啡因的北海道十勝生乳酪慕斯為核心，搭配大馬士革有機玫瑰純露晶凍與新鮮白桃果肉，入口如山間夜霧般柔和純淨。',
+        enDescription: 'Light plated dessert for night viewing. Caffeine-free Hokkaido Tokachi raw cheese mousse, organic Damascus rose dew jelly, and fresh white peach. Soft and pure as mountain night mist.',
+        image: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=900&q=80',
+        tags: ['夜間無咖啡因', '主廚推薦'], enTags: ['Evening Decaf', "Chef's Pick"],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: 30, isCaffeineFree: true
+      },
+      {
+        id: 'des-06', category: 'dessert', name: '《靜謐星夜》馬達加斯加香草籽布丁塔與黃金奇異果', enName: 'Madagascar Vanilla Flan & Gold Kiwi Tart',
+        price: 360, description: '完全不含茶與可可成分，以高比例馬達加斯加波本香草莢慢火烘烤出絲滑布丁內餡，佐以酸甜金黃奇異果與接骨木花蜜醬。',
+        enDescription: 'Zero tea or cacao. High ratio Madagascar Bourbon vanilla bean slow-baked into a silky flan, served with sweet-tart golden kiwi and elderflower honey sauce.',
+        image: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=900&q=80',
+        tags: ['夜間無咖啡因'], enTags: ['Evening Decaf'],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: 25, isCaffeineFree: true
+      },
+      {
+        id: 'pour-01', category: 'pourover', name: '巴拿馬 翡翠莊園 綠標藝伎（水洗）', enName: 'Panama Hacienda La Esmeralda Geisha Washed',
+        price: 450, description: '淺焙處理，入口綻放濃郁茉莉花香、佛手柑與白桃清甜，酸質細膩明亮，尾韻如絲綢般悠長。',
+        enDescription: 'Light roast. Blooms with rich jasmine, bergamot, and white peach sweetness. Delicate and bright acidity with a long, silky finish.',
+        image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
+        tags: ['藏家級微批次', '人氣精選'], enTags: ['Collector Batch', 'Popular'],
+        caffeineMg: 155, caffeineLabel: '高咖啡因 ~155mg', enCaffeineLabel: 'High Caffeine ~155mg',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'pour-02', category: 'pourover', name: '衣索比亞 古吉 罕貝拉（日曬）', enName: 'Ethiopia Guji Hambela Natural',
+        price: 320, description: '淺中焙，帶有熟成的藍莓果醬、熱帶百香果與可可脂香氣，果香層次飽滿圓潤。',
+        enDescription: 'Light-medium roast. Features ripe blueberry jam, tropical passionfruit, and cocoa butter aromas. Full and well-rounded fruity layers.',
+        image: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80',
+        tags: ['經典果香調'], enTags: ['Classic Fruity'],
+        caffeineMg: 165, caffeineLabel: '高咖啡因 ~165mg', enCaffeineLabel: 'High Caffeine ~165mg',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'pour-03', category: 'pourover', name: '哥倫比亞 希望莊園 瑰夏・雙重厭氧發酵', enName: 'Colombia La Esperanza Geisha Double Anaerobic',
+        price: 380, description: '特殊厭氧發酵工藝賦予紅酒單寧感與黑櫻桃、紫羅蘭芬芳，適合搭配濃郁可可系盤飾甜點。',
+        enDescription: 'Special anaerobic fermentation imparts red wine tannins with black cherry and violet aromas. Perfect with rich cacao plated desserts.',
+        image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80',
+        tags: ['主廚推薦'], enTags: ["Chef's Pick"],
+        caffeineMg: 160, caffeineLabel: '高咖啡因 ~160mg', enCaffeineLabel: 'High Caffeine ~160mg',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'pour-04', category: 'pourover', name: '哥倫比亞 甘蔗天然低因處理・水洗卡杜拉', enName: 'Colombia Sugarcane EA Decaf Caturra',
+        price: 360, description: '採用哥倫比亞天然甘蔗乙酸乙酯（EA）溫和去除 99.9% 咖啡因，完整保留焦糖、烤杏仁與紅蘋果的乾淨甜感，深夜也能無負擔享受手沖儀式。',
+        enDescription: 'Mildly decaffeinated (99.9%) using natural sugarcane EA process. Retains clean sweetness of caramel, roasted almonds, and red apple. Perfect for late-night pour-over rituals.',
+        image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80',
+        tags: ['99.9% 無咖啡因', '深夜手沖首選'], enTags: ['99.9% Decaf', 'Late-night Choice'],
+        caffeineMg: 2, caffeineLabel: '低咖啡因 <2mg（99.9% 無咖啡因）', enCaffeineLabel: 'Low Caffeine <2mg (99.9% Decaf)',
+        juicePercent: null, isCaffeineFree: true
+      },
+      {
+        id: 'sig-01', category: 'signature', name: '《晨霧》冷萃桂花氣泡美式', enName: 'Morning Mist Osmanthus Cold Brew Tonic',
+        price: 280, description: '以 18 小時冰滴耶加雪菲為基底，融合台灣南庄桂花蜜與細膩氣泡水，清澈透亮如山間晨霧。（可免費更換為天然低因濃縮基底）',
+        enDescription: '18-hour Yirgacheffe cold brew base blended with Taiwan Nanzhuang osmanthus honey and delicate sparkling water. Clear and bright like morning mist. (Free decaf espresso base swap available)',
+        image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=900&q=80',
+        tags: ['人氣精選', '可客製低因'], enTags: ['Popular', 'Customizable Decaf'],
+        caffeineMg: 130, caffeineLabel: '中咖啡因 ~130mg（可免費換低因）', enCaffeineLabel: 'Med Caffeine ~130mg (Free Decaf swap)',
+        juicePercent: 15, isCaffeineFree: false
+      },
+      {
+        id: 'sig-02', category: 'signature', name: '《暮光》煙燻楓糖燕麥奶拿鐵', enName: 'Twilight Smoked Maple Oat Latte',
+        price: 290, description: '中深焙堅果調性義式濃縮，結合絲滑燕麥奶與天然胡桃木煙燻楓糖漿，溫潤醇厚。',
+        enDescription: 'Medium-dark roast nutty espresso combined with silky oat milk and natural hickory smoked maple syrup. Warm and mellow.',
+        image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=900&q=80',
+        tags: ['溫潤醇厚'], enTags: ['Warm & Mellow'],
+        caffeineMg: 110, caffeineLabel: '中咖啡因 ~110mg', enCaffeineLabel: 'Med Caffeine ~110mg',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'sig-03', category: 'signature', name: '《策展人靈感》無酒精咖啡琴酒特調', enName: 'Curator’s Muse Zero-Proof Espresso Gin Fizz',
+        price: 340, description: '淺焙花香濃縮咖啡搭配無酒精植物蒸餾琴酒、迷迭香與新鮮紅寶石葡萄柚原汁，呈現多層次感官驚喜。（可免費更換為天然低因濃縮基底）',
+        enDescription: 'Light roast floral espresso paired with zero-proof botanical gin, rosemary, and fresh ruby grapefruit juice for multi-layered sensory surprises. (Free decaf espresso base swap available)',
+        image: 'https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=900&q=80',
+        tags: ['藝術家聯名', '可客製低因'], enTags: ['Artist Collab', 'Customizable Decaf'],
+        caffeineMg: 85, caffeineLabel: '低咖啡因 ~85mg（可免費換低因）', enCaffeineLabel: 'Low Caffeine ~85mg (Free Decaf swap)',
+        juicePercent: 45, isCaffeineFree: false
+      },
+      {
+        id: 'sig-04', category: 'signature', name: '《山夜微醺》無酒精紅酒香料熱飲', enName: 'Mulled Cabernet Zero-Proof Night Elixir',
+        price: 350, description: '以法國無酒精陳年赤霞珠葡萄原汁為基底，加入肉桂棒、八角、新鮮柳橙片與陽明山原生馬告微火慢煮，溫熱暖身，最適合夜間露台賞景。',
+        enDescription: 'French zero-proof aged Cabernet Sauvignon juice simmered with cinnamon sticks, star anise, fresh orange slices, and native Yangmingshan Makauy pepper. Perfect for warming up on the night terrace.',
+        image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+        tags: ['夜間無咖啡因', '無酒精熱飲'], enTags: ['Evening Decaf', 'Zero-proof Hot'],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: 100, isCaffeineFree: true
+      },
+      {
+        id: 'tea-01', category: 'tea_savory', name: '梨山高冷雪烏龍（熱泡一壺）', enName: 'Lishan High Mountain Snow Oolong',
+        price: 350, description: '海拔 2,200 公尺手採茶菁，茶湯金黃蜜綠，帶有冷冽山氣與蘭花清香，可回沖三次。',
+        enDescription: 'Hand-picked tea leaves from 2,200m altitude. Golden honey-green tea liquor with a crisp mountain breeze and orchid fragrance. Can be steeped three times.',
+        image: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?auto=format&fit=crop&w=900&q=80',
+        tags: ['台灣高山茶'], enTags: ['Taiwan High Mountain'],
+        caffeineMg: 55, caffeineLabel: '低咖啡因 ~55mg', enCaffeineLabel: 'Low Caffeine ~55mg',
+        juicePercent: null, isCaffeineFree: false
+      },
+      {
+        id: 'tea-02', category: 'tea_savory', name: '法國有機洋甘菊與陽明山原生香蜂草花草茶', enName: 'Organic Chamomile & Yangmingshan Lemon Balm',
+        price: 320, description: '嚴選整朵有機德國洋甘菊搭配新鮮採摘香蜂草與薰衣草，散發舒緩安神的蜂蜜草本清香，可回沖三次。',
+        enDescription: 'Carefully selected whole organic German chamomile paired with freshly picked lemon balm and lavender. Emits a soothing, calming honey-herbal fragrance. Can be steeped three times.',
+        image: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=900&q=80',
+        tags: ['夜間無咖啡因', '安神舒緩'], enTags: ['Evening Decaf', 'Calming'],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: null, isCaffeineFree: true
+      },
+      {
+        id: 'tea-03', category: 'tea_savory', name: '法式黑松露菌菇可頌鹹派', enName: 'Périgord Black Truffle & Wild Mushroom Quiche',
+        price: 340, description: '手工千層可頌酥皮填入法國佩里戈爾黑松露醬、炒野菇與康堤陳年乳酪，鹹香濃郁，適合搭配單品手沖或夜間特調。',
+        enDescription: 'Handmade flaky croissant crust filled with French Périgord black truffle paste, sautéed wild mushrooms, and aged Comté cheese. Rich and savory, perfect with pour-over coffee or evening mocktails.',
+        image: 'https://images.unsplash.com/photo-1608039755401-742074f0548d?auto=format&fit=crop&w=900&q=80',
+        tags: ['主廚鹹食推薦'], enTags: ["Chef's Savory Pick"],
+        caffeineMg: 0, caffeineLabel: '無咖啡因 0mg', enCaffeineLabel: 'Caffeine-Free 0mg',
+        juicePercent: null, isCaffeineFree: true
+      }
+    ];
+
+    const GALLERY_ITEMS = [
+      {
+        id: 'exh-01', code: 'EXH. 01', category: 'exhibition', categoryLabel: '當期藝術品輪展', enCategoryLabel: 'Current Exhibitions',
+        title: '《靜默的等高線 IV》', enTitle: '"Silent Contours IV"',
+        artist: '林澈 Che Lin × 時序空間工作室', enArtist: 'Che Lin × Chrono Space Studio',
+        medium: '陽明山安山岩、鍛造黃銅、礦物顏料｜180 × 120 × 95 cm', enMedium: 'Yangmingshan Andesite, Forged Brass, Mineral Pigments | 180 × 120 × 95 cm',
+        period: '2026 秋冬季特展（每季定期輪展更新）', enPeriod: '2026 Fall/Winter Exhibition (Regularly updated)',
+        image: 'https://images.unsplash.com/photo-1554907984-15263bfd63bd?auto=format&fit=crop&w=1000&q=80',
+        curationNote: '藝術家採集大屯火山群地質肌理，將粗礪原石與高光澤黃銅並置於 5.5 米挑高白牆前，隨著白天山嵐天光與夜間軌道燈影推移，呈現時間在物質表面留下的刻痕。',
+        enCurationNote: 'The artist collected geological textures from the Datun Volcano Group, juxtaposing rough original stone with high-gloss brass against a 5.5m high white wall. As daytime mountain mist and night-time track lights shift, it reveals the marks left by time on the material surface.',
+        pairedMenu: '《時序・光影流變》單人全區觀展品鑑套餐', enPairedMenu: '"Chrono Light & Shadow" Solo Tasting Experience', pairedPlanId: 'plan1'
+      },
+      {
+        id: 'exh-02', code: 'EXH. 02', category: 'exhibition', categoryLabel: '當期藝術品輪展', enCategoryLabel: 'Current Exhibitions',
+        title: '《白盒子裡的霧氣折射》', enTitle: '"Mist Refraction in the White Cube"',
+        artist: 'Elena Vance（瑞士 / 台北駐村）', enArtist: 'Elena Vance (Switzerland / Taipei Artist-in-Residence)',
+        medium: '低反射光學玻璃、不鏽鋼鏡面、動態微光裝置｜尺寸依空間而定', enMedium: 'Low-reflection Optical Glass, Stainless Mirror, Dynamic Micro-light | Size variable',
+        period: '2026 秋冬季特展（時序空間工作室策展）', enPeriod: '2026 Fall/Winter Exhibition (Curated by Chrono Space Studio)',
+        image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1000&q=80',
+        curationNote: '作品懸浮於中央留白展區，捕捉陽明山午後雲霧湧入落地窗瞬間的光線折射，觀者繞行作品一圈，即能看見台北盆地與山林在鏡面中交疊的虛實邊界。',
+        enCurationNote: 'Suspended in the central white cube, this piece captures the light refraction of afternoon mountain mist rolling into the floor-to-ceiling windows. Circling the work reveals the blurred boundaries of the Taipei basin and the forest overlapping in the mirrors.',
+        pairedMenu: '《白盒子》陽明山野薑花與大溪地香草千層', enPairedMenu: 'White Cube Ginger Lily Mille-Feuille', pairedPlanId: 'plan4'
+      },
+      {
+        id: 'spc-01', code: 'SPC. 01', category: 'space', categoryLabel: '山林與夜景空間', enCategoryLabel: 'Space & Night View',
+        title: '180° 台北盆地全景夜景落地窗沙龍', enTitle: '180° Panoramic Taipei Basin Night View Salon',
+        artist: '萃藝空間建築團隊 × 時序空間美學顧問', enArtist: 'Curate & Roast Architecture Team × Chrono Space Aesthetics',
+        medium: '低反射全景玻璃帷幕、義大利進口胡桃木與皮革訂製席', enMedium: 'Low-reflection Panoramic Glass Curtain, Imported Italian Walnut & Leather Custom Seating',
+        period: '日間雲海天光 10:00–17:30 ｜ 璀璨夜景時段 18:00–24:00', enPeriod: 'Daytime Sea of Clouds 10:00–17:30 | Dazzling Night View 18:00–24:00',
+        image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80',
+        curationNote: '刻意保留超過 50% 的純粹美術館留白空間，每組座位皆享有寬裕距離與無遮蔽視野，入夜後遠眺台北 101 與城市星河燈火，享受不被打擾的靜謐時光。',
+        enCurationNote: 'Intentionally reserving over 50% pure gallery white space, every seating group enjoys generous distance and unobstructed views. At night, gaze out at Taipei 101 and the city\'s galaxy of lights in undisturbed tranquility.',
+        pairedMenu: '《山嵐暮色》雙人夜間藝廊與夜景雙重奏', enPairedMenu: 'Mountain Mist Night Gallery & Skyline Duo', pairedPlanId: 'plan2'
+      },
+      {
+        id: 'spc-02', code: 'SPC. 02', category: 'space', categoryLabel: '山林與夜景空間', enCategoryLabel: 'Space & Night View',
+        title: '挑高 5.5 米主展廳與美術館級光影系統', enTitle: '5.5m High Main Hall & Gallery-Grade Lighting System',
+        artist: '空間尺度與照明設計', enArtist: 'Spatial Scale & Lighting Design',
+        medium: '清水模建築構造、3000K 高演色性防眩光軌道燈', enMedium: 'Architectural Concrete, 3000K High-CRI Anti-glare Track Lights',
+        period: '全館採純線上預約制・保留專屬車位', enPeriod: 'Online Reservation Only · Reserved Parking',
+        image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80',
+        curationNote: '打破傳統咖啡廳追求高翻桌率的擁擠配置，讓藝術品自然融入日常品飲動線。每一盞燈光皆經過博物館級色溫校準，精準呈現畫作筆觸與盤飾甜點光澤。',
+        enCurationNote: 'Breaking the crowded layouts of traditional cafes to let art naturally blend into the tasting flow. Every light is calibrated to museum-grade color temperature, precisely presenting brushstrokes and the gloss of plated desserts.',
+        pairedMenu: '《藏家私享》VIP 策展導覽與主廚客製套組', enPairedMenu: 'Collector Private Curation & Tasting', pairedPlanId: 'plan3'
+      },
+      {
+        id: 'gas-01', code: 'GAS. 01', category: 'gastronomy', categoryLabel: '可食用藝術饗宴', enCategoryLabel: 'Edible Art Gastronomy',
+        title: '《可食用的當代藝術》季度聯名盤飾工藝', enTitle: '"Edible Contemporary Art" Quarterly Collab Plated Craft',
+        artist: '主廚甜點實驗室 × 精品烘焙團隊', enArtist: 'Chef Dessert Lab × Artisanal Roasting Team',
+        medium: '台灣在地珍稀花果、法國 AOP 乳源、莊園級單一產區可可', enMedium: 'Taiwan Rare Flora & Fruits, French AOP Dairy, Single-Origin Cacao',
+        period: '隨「時序空間工作室」換展同步更新菜單', enPeriod: 'Menu updated synchronously with Chrono Space Studio exhibitions',
+        image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1000&q=80',
+        curationNote: '每一季更換館內藝術品的同時，主廚與咖啡師皆會為當期主視覺作品研發專屬盤飾甜點與特調，讓味覺成為看展體驗的最終章。',
+        enCurationNote: 'As the gallery artworks rotate each season, the chef and barista develop exclusive plated desserts and signature drinks inspired by the current main visuals, making taste the final chapter of the exhibition experience.',
+        pairedMenu: '《光影解構》煙燻烏龍與 75% 莊園可可雕塑', enPairedMenu: 'Deconstructed Smoked Oolong & 75% Cacao', pairedPlanId: 'plan4'
+      },
+      {
+        id: 'gas-02', code: 'GAS. 02', category: 'gastronomy', categoryLabel: '可食用藝術饗宴', enCategoryLabel: 'Edible Art Gastronomy',
+        title: '微批次精品手沖與夜間無咖啡因感官系列', enTitle: 'Micro-Batch Pour-Overs & Evening Caffeine-Free Sensory Series',
+        artist: '自家精準曲線烘焙室', enArtist: 'In-house Precision Roasting Room',
+        medium: '巴拿馬翡翠莊園藝伎、哥倫比亞天然甘蔗低因處理', enMedium: 'Panama La Esmeralda Geisha, Colombia Sugarcane EA Decaf',
+        period: '全天候供應（夜間 18:00–24:00 提供完整低因／無咖啡因選擇）', enPeriod: 'Available all day (Full decaf/caffeine-free selection from 18:00-24:00)',
+        image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1000&q=80',
+        curationNote: '從白天喚醒感官的茉莉花香藝伎手沖，到深夜零負擔的甘蔗天然低因手沖與無酒精紅酒香料熱飲，陪伴您在山林夜色中從容品鑑。',
+        enCurationNote: 'From jasmine-scented Geisha pour-overs that awaken the senses by day, to burden-free sugarcane decaf and zero-proof mulled wine hot drinks late at night, accompanying your leisurely tasting amidst the mountain night.',
+        pairedMenu: '哥倫比亞 甘蔗天然低因處理・水洗卡杜拉', enPairedMenu: 'Colombia Sugarcane EA Decaf Caturra', pairedPlanId: 'plan4'
+      }
+    ];
+
+    const PLAN_OPTIONS = [
+      { id: 'plan1', zh: '【主力推薦】《時序・光影流變》單人全區觀展品鑑套餐 — NT$ 1,280 / 位', en: '[Top Pick] "Chrono Light & Shadow" Solo Tasting Experience — NT$ 1,280 / pax' },
+      { id: 'plan2', zh: '【夜間雙人】《山嵐暮色》雙人夜間藝廊與夜景雙重奏 — NT$ 2,480 / 組', en: '[Night Duo] Mountain Mist Night Gallery & Skyline Duo — NT$ 2,480 / set' },
+      { id: 'plan3', zh: '【VIP 策展】《藏家私享》VIP 策展導覽與主廚客製套組 — NT$ 1,980 / 位', en: '[VIP Curation] Collector Private Curation & Tasting — NT$ 1,980 / pax' },
+      { id: 'plan4', zh: '【沙龍單點】精品沙龍午茶／夜間低因品鑑席（低消：甜點＋飲品各一）', en: '[A La Carte] Salon Afternoon Tea / Evening Decaf Tasting (Min: 1 Drink + 1 Dessert)' },
+      { id: 'plan5', zh: '【B2B 商務窗口】品牌聯名／私人包場／藝術收藏專案洽詢', en: '[B2B] Brand Collab / Private Event / Art Collection Inquiry' }
+    ];
+
+    /* ==========================================
+     * COMPONENT ARCHITECTURE
+     * ========================================== */
+
+    const Navbar = ({ language, setLanguage, t, scrollToSection }) => {
+      const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+      const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+      return (
+        <header className="fixed top-0 left-0 right-0 z-40 bg-[#FFFFFF]/95 backdrop-blur-md border-b border-[#C5A880]/40 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between">
+            <button onClick={() => scrollToSection('home')} className="text-left group focus:outline-none">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#C5A880] inline-block group-hover:scale-125 transition-transform" />
+                <span className="text-lg sm:text-xl font-semibold tracking-[0.2em] text-[#1B3829]">
+                  {t('萃藝空間', 'CURATE & ROAST')}
+                </span>
+              </div>
+              <p className="text-[10px] tracking-[0.28em] text-[#C5A880] font-semibold uppercase mt-0.5 pl-5">
+                {t('CURATE & ROAST', 'YANGMINGSHAN GALLERY')}
+              </p>
+            </button>
+
+            <nav className="hidden lg:flex items-center space-x-8 text-sm tracking-[0.18em]">
+              {[
+                { id: 'home', label: t('首頁', 'HOME') },
+                { id: 'about', label: t('關於', 'ABOUT') },
+                { id: 'menu', label: t('菜單', 'MENU') },
+                { id: 'environment', label: t('環境', 'GALLERY') },
+                { id: 'reservation', label: t('訂位', 'RESERVE') },
+                { id: 'contact', label: t('聯絡', 'CONTACT') }
+              ].map((nav) => (
+                <button
+                  key={nav.id}
+                  onClick={() => scrollToSection(nav.id)}
+                  className="text-[#1B3829]/80 hover:text-[#1B3829] font-medium transition-colors py-2 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#C5A880] hover:after:w-full after:transition-all uppercase"
+                >
+                  {nav.label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <button
+                  onClick={() => setLangMenuOpen(!langMenuOpen)}
+                  className="px-2 py-2 sm:px-3 sm:py-2.5 rounded-full border border-[#C5A880]/50 text-[#14281D] hover:border-[#1B3829] transition-all flex items-center gap-1.5 bg-white/50 backdrop-blur-sm"
+                >
+                  <Globe className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#9E7E53]" />
+                  <span className="hidden sm:inline text-xs font-semibold tracking-wider text-[#14281D]">
+                    {language === 'zh-TW' ? '中文' : language === 'en-US' ? 'EN(US)' : 'EN(UK)'}
+                  </span>
+                </button>
+                
+                {langMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-36 bg-white border border-[#C5A880]/30 rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+                    <button onClick={() => { setLanguage('zh-TW'); setLangMenuOpen(false); }} className={`block w-full text-left px-5 py-2.5 text-xs tracking-widest hover:bg-[#F9F9F6] transition-colors ${language === 'zh-TW' ? 'text-[#1B3829] font-bold bg-[#F9F9F6]' : 'text-[#1B3829]/80 font-medium'}`}>繁體中文</button>
+                    <button onClick={() => { setLanguage('en-US'); setLangMenuOpen(false); }} className={`block w-full text-left px-5 py-2.5 text-xs tracking-widest hover:bg-[#F9F9F6] transition-colors ${language === 'en-US' ? 'text-[#1B3829] font-bold bg-[#F9F9F6]' : 'text-[#1B3829]/80 font-medium'}`}>English (US)</button>
+                    <button onClick={() => { setLanguage('en-GB'); setLangMenuOpen(false); }} className={`block w-full text-left px-5 py-2.5 text-xs tracking-widest hover:bg-[#F9F9F6] transition-colors ${language === 'en-GB' ? 'text-[#1B3829] font-bold bg-[#F9F9F6]' : 'text-[#1B3829]/80 font-medium'}`}>English (UK)</button>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => scrollToSection('reservation')}
+                className="px-4 sm:px-6 py-2.5 rounded-full bg-[#1B3829] text-[#FFFFFF] border border-[#C5A880] text-xs sm:text-sm font-semibold tracking-[0.15em] hover:bg-[#1B3829]/90 transition-all shadow-md flex items-center gap-1.5"
+              >
+                <span>{t('立即訂位', 'BOOK NOW')}</span>
+                <ArrowUpRight className="w-4 h-4 text-[#C5A880]" />
+              </button>
+
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2.5 rounded-lg border border-[#1B3829]/25 text-[#1B3829] hover:border-[#C5A880]">
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {mobileMenuOpen && (
+            <div className="lg:hidden bg-[#FFFFFF] border-b border-[#C5A880]/40 px-6 py-5 space-y-3 shadow-lg">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'home', label: t('首頁 HOME', 'HOME') }, { id: 'about', label: t('關於 ABOUT', 'ABOUT') },
+                  { id: 'menu', label: t('菜單 MENU', 'MENU') }, { id: 'environment', label: t('環境 GALLERY', 'GALLERY') },
+                  { id: 'reservation', label: t('訂位 RESERVE', 'RESERVE') }, { id: 'contact', label: t('聯絡 CONTACT', 'CONTACT') }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => { scrollToSection(item.id); setMobileMenuOpen(false); }}
+                    className="text-left px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#1B3829]/15 text-sm tracking-widest text-[#1B3829] hover:border-[#C5A880] uppercase"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </header>
+      );
+    };
+
+    const HeroSection = ({ t, scrollToSection }) => (
+      <section id="home" className="relative h-[100dvh] min-h-[680px] w-full flex flex-col justify-between overflow-hidden bg-[#1B3829] text-white">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2400&q=100"
+            alt="萃藝空間陽明山山林藝廊與夜景空間滿版主視覺"
+            onError={(e) => { e.currentTarget.src = 'https://placehold.co/1920x1080/1B3829/C5A880?text=CURATE+%26+ROAST+YANGMINGSHAN'; }}
+            className="w-full h-full object-cover object-center scale-[1.02] hover:scale-100 transition-transform duration-1000"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3829]/90 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1B3829]/75 via-transparent to-transparent" />
+          <div className="absolute bottom-4 right-4 sm:right-6 text-[10px] text-white/40 tracking-widest z-10 font-mono drop-shadow-sm">
+            Photo: Unsplash
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-10 pt-28 pb-8 lg:pb-12 flex-1 flex flex-col justify-between pointer-events-none">
+          <div className="max-w-2xl space-y-5 pt-2 lg:pt-6 pointer-events-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1B3829]/80 backdrop-blur-md border border-[#C5A880]/70 text-xs tracking-[0.2em] text-[#FFFFFF]">
+              <Sparkles className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span>{t('時序空間工作室 × 長期跨界策展合作', 'In Collaboration with Chrono Space Studio')}</span>
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs tracking-[0.35em] text-[#C5A880] font-semibold uppercase drop-shadow">YANGMINGSHAN · TAIPEI</p>
+              <h1 className="text-4xl sm:text-5xl xl:text-6xl font-light leading-[1.18] tracking-wider text-white drop-shadow-md">
+                {t('萃藝空間', 'CURATE & ROAST')}
+                <span className="block text-xl sm:text-2xl xl:text-3xl font-normal tracking-[0.28em] text-[#C5A880] mt-2">
+                  {t('CURATE & ROAST', 'YANGMINGSHAN GALLERY')}
+                </span>
+              </h1>
+              <p className="text-base sm:text-xl text-white leading-relaxed font-light pt-1 drop-shadow">
+                {t('當代藝術策展與精品咖啡甜品的山林感官沙龍。', 'A mountain sensory salon combining contemporary art curation with specialty coffee and desserts.')}
+                <span className="block text-xs sm:text-sm text-[#FFFFFF]/80 italic mt-1.5 tracking-wide">
+                  Where Contemporary Art Curation Meets Artisanal Roasting Above the City.
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <button onClick={() => scrollToSection('reservation')} className="px-8 py-3.5 rounded-full bg-[#C5A880] text-[#1B3829] text-sm font-semibold tracking-[0.18em] hover:bg-[#d8be98] transition-all flex items-center justify-center gap-2 shadow-xl">
+                <span>{t('預約看展與品鑑', 'Reserve a Tasting')}</span><ArrowUpRight className="w-4 h-4" />
+              </button>
+              <button onClick={() => scrollToSection('menu')} className="px-7 py-3.5 rounded-full bg-[#1B3829]/75 backdrop-blur-md border border-[#C5A880]/75 text-white text-sm tracking-[0.18em] hover:bg-white hover:text-[#1B3829] transition-all text-center">
+                {t('探索季度菜單', 'Explore Seasonal Menu')}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-5 items-end pointer-events-auto">
+            <div className="lg:col-span-5 grid grid-cols-2 gap-4 p-5 rounded-2xl bg-[#1B3829]/85 backdrop-blur-md border border-[#C5A880]/45 text-xs">
+              <div>
+                <span className="text-[#C5A880] font-semibold tracking-widest block mb-1">OPENING HOURS</span>
+                <p className="text-white font-medium">{t('週二至週日 10:00 – 24:00', 'Tue – Sun 10:00 – 24:00')}</p>
+                <p className="text-white/75 mt-0.5">{t('每週一固定公休', 'Closed on Mondays')}</p>
+              </div>
+              <div>
+                <span className="text-[#C5A880] font-semibold tracking-widest block mb-1">RESERVATION ONLY</span>
+                <p className="text-white font-medium">{t('純線上預約制・無現場候位', 'Online Reservation Only')}</p>
+                <p className="text-white/75 mt-0.5">{t('專屬保留車位 / 私人專車接送', 'Reserved Parking / Transfer')}</p>
+              </div>
+            </div>
+            <div className="lg:col-span-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-white/95 backdrop-blur-md border-2 border-[#C5A880] text-[#1B3829] shadow-2xl">
+              <div>
+                <span className="text-[11px] font-semibold tracking-[0.25em] text-[#C5A880] uppercase">{t('CURRENT CURATION · 當期展演主題', 'CURRENT CURATION')}</span>
+                <h2 className="text-lg sm:text-xl font-semibold text-[#1B3829] mt-1">{t('《時序・光影流變》當代雕塑與山林夜景特展', '"Chrono Light & Shadow" Sculpture & Night View Exhibition')}</h2>
+                <p className="text-xs text-[#1B3829]/75 mt-1">{t('由「時序空間工作室」定期輪展更新藝術真跡 · 台北陽明山仰德大道二段秘境', 'Regularly updated authentic artworks curated by Chrono Space Studio · Yangmingshan Secret')}</p>
+              </div>
+              <button onClick={() => scrollToSection('environment')} className="self-start sm:self-auto px-5 py-2.5 rounded-full bg-[#1B3829] border border-[#C5A880] text-xs tracking-widest text-[#FFFFFF] hover:bg-[#C5A880] hover:text-[#1B3829] font-semibold transition-colors whitespace-nowrap uppercase">
+                {t('進入線上藝廊 →', 'Enter Gallery →')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+
+    const AboutSection = ({ t, isUK }) => (
+      <section id="about" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-10 bg-white text-[#1B3829] border-b border-[#C5A880]/35 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <ScrollReveal className="flex flex-col md:flex-row md:items-end justify-between pb-10 border-b border-[#C5A880]/40 gap-6">
+            <div>
+              <span className="text-xs font-semibold tracking-[0.3em] text-[#C5A880] uppercase">01 / BRAND PHILOSOPHY &amp; CURATION</span>
+              <h2 className="text-3xl sm:text-4xl font-light tracking-wider text-[#1B3829] mt-3">{t('當代藝術進駐山林，以味覺延續策展時序', 'Contemporary Art in the Mountains, Extending Curation Through Taste')}</h2>
+            </div>
+            <a href="https://alice940912-a11y.github.io/-Chrono-Space-Experience/index%20(2).html" target="_blank" rel="noreferrer" className="text-[10px] sm:text-xs font-medium tracking-[0.15em] sm:tracking-[0.2em] text-[#1B3829]/75 uppercase hover:text-[#C5A880] transition-colors flex items-center gap-1 group whitespace-normal sm:whitespace-nowrap text-right">
+              {t('IN COLLABORATION WITH CHRONO SPACE STUDIO 時序空間工作室', 'IN COLLABORATION WITH CHRONO SPACE STUDIO')}
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+            </a>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 pt-12 items-start">
+            <ScrollReveal delay={100} className="lg:col-span-7 space-y-6 text-[#1B3829]/85 leading-relaxed text-base sm:text-lg font-light">
+              <p>
+                <strong className="font-semibold text-[#1B3829]">{t('「萃藝空間 CURATE & ROAST」', '"CURATE & ROAST"')}</strong>
+                {t('誕生於對藝術與味覺共鳴的極致追求。本空間為知名策展團隊', ' was born from the ultimate pursuit of ' + (isUK ? 'flavour' : 'flavor') + ' and art resonance. We serve as the long-term physical crossover venue for the renowned curatorial team ')}
+                <span className="mx-1.5 px-2.5 py-0.5 rounded bg-[#1B3829] text-[#FFFFFF] border border-[#C5A880]/50 text-sm font-medium whitespace-nowrap">{t('時序空間工作室', 'Chrono Space Studio')}</span>
+                {t('旗下的長期跨界合作實體據點，打破傳統白盒子美術館的距離感與一般咖啡廳的喧囂，將台北陽明山打造成一座隨季節更迭的動態美術館。', ', breaking the distance of traditional white-cube galleries and transforming Taipei\'s Yangmingshan into a dynamic museum that changes with the seasons.')}
+              </p>
+              <p>{t('館內擁有挑高 5.5 米的超大無柱開闊尺度，刻意保留超過 50% 的純粹展演留白面積。由時序空間工作室定期引入國內外當代藝術家真跡與大型雕塑裝置，讓每一次造訪，都是一場視覺與味覺同步更新的沉浸式對話。', 'The venue boasts a 5.5-meter high, column-free expanse, intentionally reserving over 50% of the pure exhibition space. Authentic artworks and large-scale sculptural installations by domestic and international contemporary artists are regularly introduced by Chrono Space Studio, making every visit an immersive dialogue of visual and gustatory renewal.')}</p>
+              <p>
+                {t('甜點主廚團隊與精品咖啡烘焙室更以', 'Our executive pastry chef team and specialty coffee roastery take ')}
+                <strong className="font-semibold text-[#1B3829] underline decoration-[#C5A880] decoration-2 underline-offset-4 mx-1">{t('「可食用的當代藝術（Edible Contemporary Art）」', '"Edible Contemporary Art"')}</strong>
+                {t('為核心，每季隨館內藝術展品更換主視覺盤飾甜點，讓賓客在俯瞰台北盆地日夜光影與 101 璀璨夜景的同時，完成一場完整的感官儀式。', 'as their core philosophy. Each season, the signature plated desserts are updated to match the gallery\'s artworks, allowing guests to complete a full sensory ritual while overlooking the day-to-night light shifts and Taipei 101\'s dazzling night view.')}
+              </p>
+            </ScrollReveal>
+            <div className="lg:col-span-5 space-y-4">
+              {[
+                { num: 'I.', title: t('時序空間工作室・定期藝術輪展', 'Chrono Space Studio · Regular Art Rotation'), desc: t('每季由專業策展團隊更新館內藝術真跡，並發行專屬《當期展覽圖錄與品鑑指南》，提供深度導覽與藏家洽詢。', 'Seasonal updates of authentic artworks by professional curators, featuring exclusive exhibition catalogs, in-depth tours, and collector inquiries.') },
+                { num: 'II.', title: t('可食用當代藝術・雙重奏體驗', 'Edible Contemporary Art · Duo Experience'), desc: t('結合法式盤飾甜點與世界微批次單品手沖，夜間 18:00 至 24:00 更提供完整「無咖啡因甜點與低因特調」選擇。', 'Combining French plated desserts with global micro-batch pour-overs. From 18:00 to 24:00, a complete selection of caffeine-free desserts and decaf mocktails is provided.') },
+                { num: 'III.', title: t('純線上預約制・專屬車位與專車禮遇', 'Online Booking Only · VIP Parking & Transfer'), desc: t('全館不提供現場候位，維護美術館級靜謐品質。預約成功即自動保留館內專屬停車位，亦可選購台北市區私人專車上下山接送。', 'No walk-ins accepted to maintain museum-grade tranquility. A dedicated parking space is automatically reserved upon booking, with optional private transfer service from Taipei City.') }
+              ].map((card, idx) => (
+                <ScrollReveal key={card.num} delay={idx * 120}>
+                  <div className="p-6 rounded-2xl bg-[#F9F9F6] border border-[#C5A880]/45 shadow-sm hover:border-[#1B3829] transition-colors">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-base font-serif italic text-[#C5A880] font-bold">{card.num}</span>
+                      <h3 className="text-base sm:text-lg font-semibold text-[#1B3829]">{card.title}</h3>
+                    </div>
+                    <p className="text-sm text-[#1B3829]/75 leading-relaxed mt-2.5 pl-6">{card.desc}</p>
+                  </div>
+                </ScrollReveal>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+
+    const MenuSection = ({ t, isEn, scrollToSection, setBookingForm, activeMenuItem, setActiveMenuItem }) => {
+      const [selectedMenuCategory, setSelectedMenuCategory] = useState('all');
+      const [onlyCaffeineFree, setOnlyCaffeineFree] = useState(false);
+
+      const filteredMenu = useMemo(() => {
+        return MENU_DATA.filter((item) => {
+          const matchCategory = selectedMenuCategory === 'all' || item.category === selectedMenuCategory;
+          const matchCaffeine = !onlyCaffeineFree || item.isCaffeineFree;
+          return matchCategory && matchCaffeine;
+        });
+      }, [selectedMenuCategory, onlyCaffeineFree]);
+
+      return (
+        <section id="menu" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-10 bg-[#1B3829] text-white border-b border-[#C5A880]/40 overflow-hidden">
+          <div className="max-w-7xl mx-auto">
+            <ScrollReveal className="flex flex-col lg:flex-row lg:items-end justify-between pb-10 border-b border-[#C5A880]/35 gap-6">
+              <div>
+                <span className="text-xs font-semibold tracking-[0.3em] text-[#C5A880] uppercase">02 / MODULAR GASTRONOMY &amp; PAIRING MENU</span>
+                <h2 className="text-3xl sm:text-4xl font-light tracking-wider text-white mt-3">{t('味覺策展菜單・看展套組與精品甜飲', 'Gastronomic Curation · Pairing Sets & Artisanal Sweets')}</h2>
+                <p className="text-sm text-white/80 mt-2 max-w-2xl">{t('每道品項皆明確標示咖啡因含量（mg）與天然果汁原汁比例（%）。夜間造訪亦可一鍵篩選「無咖啡因」系列。', 'Each item clearly indicates caffeine content (mg) and natural juice ratio (%). A one-click "Caffeine-Free" filter is available for evening visits.')}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setOnlyCaffeineFree(!onlyCaffeineFree)} className={`px-5 py-3 rounded-full text-xs sm:text-sm font-medium tracking-wider transition-all flex items-center gap-2 border ${onlyCaffeineFree ? 'bg-[#C5A880] border-[#C5A880] text-[#1B3829] font-semibold shadow-lg' : 'bg-[#1B3829] border-[#C5A880]/50 text-white hover:border-[#C5A880]'}`}>
+                  <Moon className={`w-4 h-4 ${onlyCaffeineFree ? 'text-[#1B3829]' : 'text-[#C5A880]'}`} />
+                  <span>{t('僅顯示夜間無咖啡因品項（0mg / 99.9%低因）', 'Show Caffeine-Free Only (0mg / 99.9% Decaf)')}</span>
+                  <span className={`ml-1 w-2.5 h-2.5 rounded-full ${onlyCaffeineFree ? 'bg-[#1B3829]' : 'bg-white/30'}`} />
+                </button>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={80} className="flex items-center gap-2.5 overflow-x-auto py-7 no-scrollbar">
+              {MENU_CATEGORIES.map((cat) => (
+                <button key={cat.id} onClick={() => setSelectedMenuCategory(cat.id)} className={`px-5 py-3 rounded-xl text-left transition-all shrink-0 border ${selectedMenuCategory === cat.id ? 'bg-white border-[#C5A880] text-[#1B3829] shadow-md' : 'bg-[#1B3829]/80 border-[#C5A880]/30 text-white/75 hover:text-white hover:border-[#C5A880]'}`}>
+                  <span className={`block text-[10px] tracking-[0.22em] uppercase font-semibold ${selectedMenuCategory === cat.id ? 'text-[#C5A880]' : 'text-[#C5A880]'}`}>{cat.en}</span>
+                  <span className="block text-xs sm:text-sm font-semibold tracking-wider mt-0.5">{isEn ? cat.en : cat.label}</span>
+                </button>
+              ))}
+            </ScrollReveal>
+
+            {filteredMenu.length === 0 ? (
+              <div className="py-16 text-center rounded-2xl bg-white text-[#1B3829] border border-[#C5A880]">
+                <p className="text-[#1B3829]/80 text-base">{t('此分類目前無符合「夜間無咖啡因」條件的品項，請切換其他分類或關閉篩選。', 'No items in this category match the "Caffeine-Free" filter. Please select another category or clear the filter.')}</p>
+                <button onClick={() => { setSelectedMenuCategory('all'); setOnlyCaffeineFree(false); }} className="mt-4 px-5 py-2 rounded-full bg-[#1B3829] text-[#FFFFFF] border border-[#C5A880] text-xs font-semibold tracking-widest uppercase">
+                  {t('顯示全部 20 道品項', 'SHOW ALL 20 ITEMS')}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredMenu.map((item, idx) => (
+                  <ScrollReveal key={item.id} delay={(idx % 3) * 90} className="flex">
+                    <article className="w-full group rounded-2xl bg-white text-[#1B3829] border border-[#C5A880]/50 hover:border-[#C5A880] hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div onClick={() => setActiveMenuItem(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveMenuItem(item); } }} aria-label={`放大查看 ${item.name} 照片與詳情`} className="relative h-56 overflow-hidden bg-[#1B3829] cursor-pointer">
+                          <img src={item.image} alt={item.name} onError={(e) => { e.currentTarget.src = 'https://placehold.co/800x600/1B3829/C5A880?text=CURATE+%26+ROAST'; }} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <div className="absolute top-3 right-3 text-[9px] text-white/60 tracking-wider font-mono drop-shadow-md z-10">Photo: Unsplash</div>
+                          <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-[#1B3829]/85 backdrop-blur-md border border-[#C5A880]/75 text-[#FFFFFF] text-[11px] font-medium tracking-wider flex items-center gap-1.5 opacity-90 group-hover:opacity-100 group-hover:bg-[#1B3829] transition-all shadow">
+                            <Eye className="w-3.5 h-3.5 text-[#C5A880]" /><span>{t('點擊查看大圖', 'View Details')}</span>
+                          </div>
+                          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                            {(isEn ? item.enTags : item.tags).map((tag) => (
+                              <span key={tag} className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wider backdrop-blur-md shadow-sm ${tag.includes('無咖啡因') || tag.includes('Decaf') ? 'bg-[#1B3829]/95 text-white border border-[#C5A880]' : 'bg-white/95 text-[#1B3829] border border-[#C5A880]'}`}>{tag}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="p-6">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-semibold tracking-[0.18em] text-[#C5A880] uppercase">{item.enName}</p>
+                              <h3 className="text-lg font-semibold text-[#1B3829] mt-1 leading-snug">{isEn ? item.enName : item.name}</h3>
+                            </div>
+                            <span className="text-lg font-bold text-[#C5A880] shrink-0 font-mono">NT$ {item.price.toLocaleString()}</span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-[#1B3829]/75 leading-relaxed mt-3">{isEn ? item.enDescription : item.description}</p>
+                        </div>
+                      </div>
+                      <div className="px-6 pb-5 pt-3 border-t border-[#C5A880]/25 bg-[#F9F9F6] flex flex-wrap items-center gap-2 text-xs">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium ${item.isCaffeineFree ? 'bg-[#1B3829] border-[#C5A880] text-white' : 'bg-white border-[#C5A880]/60 text-[#1B3829]'}`}>
+                          {item.isCaffeineFree ? <Moon className="w-3.5 h-3.5 text-[#C5A880]" /> : <Coffee className="w-3.5 h-3.5 text-[#C5A880]" />}
+                          <span>{isEn ? item.enCaffeineLabel : item.caffeineLabel}</span>
+                        </span>
+                        {item.juicePercent !== null && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#1B3829]/25 text-[#1B3829] font-medium">
+                            <Droplets className="w-3.5 h-3.5 text-[#C5A880]" />
+                            <span>{t(`天然果汁含量 ${item.juicePercent}%`, `Natural Juice ${item.juicePercent}%`)}</span>
+                          </span>
+                        )}
+                      </div>
+                    </article>
+                  </ScrollReveal>
+                ))}
+              </div>
+            )}
+            <ScrollReveal delay={100}>
+              <div className="mt-10 p-5 sm:p-6 rounded-2xl bg-white text-[#1B3829] border-2 border-[#C5A880] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-start gap-3.5">
+                  <Info className="w-5 h-5 text-[#C5A880] shrink-0 mt-0.5" />
+                  <div className="text-xs sm:text-sm text-[#1B3829]/90 leading-relaxed">
+                    <strong className="text-[#1B3829] font-semibold tracking-wider block sm:inline mr-2">{t('【夜間低因客製服務註記】', '[EVENING DECAF CUSTOMIZATION]')}</strong>
+                    {t('菜單中的《晨霧》冷萃桂花氣泡美式與《策展人靈感》無酒精咖啡琴酒特調，亦可於點餐時免費客製更換為「天然低因濃縮基底」，讓夜間選擇更彈性！', 'The "Morning Mist" Cold Brew Tonic and "Curator\'s Muse" Espresso Gin Fizz can be swapped with a natural decaf espresso base at no extra charge, offering flexible choices for your evening visits!')}
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-[#C5A880] tracking-widest shrink-0">EVENING CURATION · 18:00–24:00</span>
+              </div>
+            </ScrollReveal>
+          </div>
+
+          {activeMenuItem && (
+            <div className="fixed inset-0 z-50 bg-[#1B3829]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" onClick={() => setActiveMenuItem(null)}>
+              <div className="max-w-3xl w-full rounded-3xl bg-white text-[#1B3829] overflow-hidden shadow-2xl border-2 border-[#C5A880]" onClick={(e) => e.stopPropagation()}>
+                <div className="grid grid-cols-1 md:grid-cols-12">
+                  <div className="md:col-span-7 bg-[#1B3829] relative min-h-[300px] sm:min-h-[380px]">
+                    <img src={activeMenuItem.image} alt={activeMenuItem.name} onError={(e) => { e.currentTarget.src = 'https://placehold.co/900x700/1B3829/C5A880?text=CURATE+%26+ROAST'; }} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-3 right-4 text-[10px] text-white/50 tracking-wider font-mono z-10 drop-shadow-sm">Photo: Unsplash</div>
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      {(isEn ? activeMenuItem.enTags : activeMenuItem.tags).map((tag) => (
+                        <span key={tag} className={`px-3 py-1 rounded-full text-xs font-medium tracking-wider backdrop-blur-md shadow ${tag.includes('無咖啡因') || tag.includes('Decaf') ? 'bg-[#1B3829]/95 text-white border border-[#C5A880]' : 'bg-white/95 text-[#1B3829] border border-[#C5A880]'}`}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="md:col-span-5 p-6 sm:p-7 flex flex-col justify-between space-y-5">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-semibold tracking-[0.2em] text-[#C5A880] uppercase">{activeMenuItem.enName}</span>
+                        <button onClick={() => setActiveMenuItem(null)} className="p-1.5 rounded-full hover:bg-[#1B3829]/10 text-[#1B3829] shrink-0"><X className="w-5 h-5" /></button>
+                      </div>
+                      <h3 className="text-xl font-semibold text-[#1B3829] mt-1.5 leading-snug">{isEn ? activeMenuItem.enName : activeMenuItem.name}</h3>
+                      <p className="text-xl font-bold text-[#C5A880] font-mono mt-2">NT$ {activeMenuItem.price.toLocaleString()}</p>
+                      <p className="text-sm text-[#1B3829]/80 leading-relaxed mt-4 pt-4 border-t border-[#C5A880]/30">{isEn ? activeMenuItem.enDescription : activeMenuItem.description}</p>
+                    </div>
+                    <div className="space-y-3 pt-3 border-t border-[#C5A880]/30">
+                      <div className="flex flex-col gap-2 text-xs">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border font-medium ${activeMenuItem.isCaffeineFree ? 'bg-[#1B3829] border-[#C5A880] text-white' : 'bg-[#F9F9F6] border-[#C5A880]/60 text-[#1B3829]'}`}>
+                          {activeMenuItem.isCaffeineFree ? <Moon className="w-4 h-4 text-[#C5A880]" /> : <Coffee className="w-4 h-4 text-[#C5A880]" />}
+                          <span>{isEn ? activeMenuItem.enCaffeineLabel : activeMenuItem.caffeineLabel}</span>
+                        </span>
+                        {activeMenuItem.juicePercent !== null && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F9F9F6] border border-[#1B3829]/25 text-[#1B3829] font-medium">
+                            <Droplets className="w-4 h-4 text-[#C5A880]" />
+                            <span>{t(`天然果汁含量 ${activeMenuItem.juicePercent}%`, `Natural Juice Content ${activeMenuItem.juicePercent}%`)}</span>
+                          </span>
+                        )}
+                      </div>
+                      <button onClick={() => {
+                        const selectedPlanId = activeMenuItem.category === 'pairing' ? 'plan1' : 'plan4';
+                        setActiveMenuItem(null);
+                        if (activeMenuItem.category === 'pairing' || activeMenuItem.category === 'dessert') {
+                          setBookingForm((prev) => ({ ...prev, plan: selectedPlanId }));
+                        }
+                        scrollToSection('reservation');
+                      }} className="w-full py-3 rounded-full bg-[#1B3829] text-[#FFFFFF] border border-[#C5A880] text-xs font-semibold tracking-[0.18em] hover:bg-[#1B3829]/90 transition-colors flex items-center justify-center gap-1.5 uppercase">
+                        <span>{t('前往線上訂位品嚐', 'Proceed to Booking')}</span><ArrowUpRight className="w-4 h-4 text-[#C5A880]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      );
+    };
+
+    const Gallery = ({ t, isEn, scrollToSection, activeExhibition, setActiveExhibition, handleSelectPlanFromModal }) => {
+      const [selectedGalleryFilter, setSelectedGalleryFilter] = useState('all');
+
+      const filteredGallery = useMemo(() => {
+        if (selectedGalleryFilter === 'all') return GALLERY_ITEMS;
+        return GALLERY_ITEMS.filter((item) => item.category === selectedGalleryFilter);
+      }, [selectedGalleryFilter]);
+
+      return (
+        <section id="environment" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-10 bg-white text-[#1B3829] border-b border-[#C5A880]/35 overflow-hidden">
+          <div className="max-w-7xl mx-auto">
+            <ScrollReveal className="flex flex-col lg:flex-row lg:items-end justify-between pb-10 border-b border-[#C5A880]/40 gap-6">
+              <div>
+                <span className="text-xs font-semibold tracking-[0.3em] text-[#C5A880] uppercase">03 / EXHIBITION GALLERY &amp; ARCHITECTURE</span>
+                <h2 className="text-3xl sm:text-4xl font-light tracking-wider text-[#1B3829] mt-3">{t('當期藝廊輪展・陽明山夜景空間與美學細節', 'Current Exhibitions · Yangmingshan Night View & Aesthetics')}</h2>
+                <p className="text-sm text-[#1B3829]/70 mt-2">{t('點擊任一作品或空間卡片，可展開「當代展覽圖錄詳情」並直接預約對應體驗套組。', 'Click any artwork or space card to view the "Contemporary Exhibition Catalog" and directly book the corresponding paired experience.')}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'all', label: t('全部展演 ALL', 'ALL') },
+                  { id: 'exhibition', label: t('當期藝術品輪展', 'CURRENT ARTWORKS') },
+                  { id: 'space', label: t('山林與夜景空間', 'SPACE & NIGHT VIEW') },
+                  { id: 'gastronomy', label: t('可食用藝術饗宴', 'EDIBLE ART') }
+                ].map((tab) => (
+                  <button key={tab.id} onClick={() => setSelectedGalleryFilter(tab.id)} className={`px-4 py-2.5 rounded-full text-xs font-medium tracking-wider transition-all border uppercase ${selectedGalleryFilter === tab.id ? 'bg-[#1B3829] text-[#FFFFFF] border-[#C5A880] shadow-sm' : 'bg-[#F9F9F6] text-[#1B3829]/80 border-[#C5A880]/40 hover:border-[#1B3829]'}`}>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </ScrollReveal>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-12">
+              {filteredGallery.map((item, idx) => (
+                <ScrollReveal key={item.id} delay={(idx % 3) * 100} className="flex">
+                  <div onClick={() => setActiveExhibition(item)} className="w-full group cursor-pointer rounded-2xl bg-[#F9F9F6] border border-[#C5A880]/45 overflow-hidden shadow-sm hover:shadow-xl hover:border-[#1B3829] transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="relative h-64 overflow-hidden bg-[#1B3829]">
+                        <img src={item.image} alt={item.title} onError={(e) => { e.currentTarget.src = 'https://placehold.co/900x700/1B3829/C5A880?text=EXHIBITION+CATALOG'; }} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#1B3829]/90 border border-[#C5A880] text-[#FFFFFF] text-[11px] font-mono tracking-widest">{item.code}</div>
+                        <div className="absolute top-3 right-3 text-[9px] text-white/60 tracking-wider font-mono drop-shadow-md z-10">Photo: Unsplash</div>
+                        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-white/95 border border-[#C5A880] text-[#1B3829] text-xs font-medium flex items-center gap-1 shadow">
+                          <Eye className="w-3.5 h-3.5 text-[#1B3829]" /><span>{t('檢視策展圖錄', 'View Catalog')}</span>
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        <span className="text-[11px] font-semibold tracking-[0.2em] text-[#C5A880] uppercase">{isEn ? item.enCategoryLabel : item.categoryLabel}</span>
+                        <h3 className="text-xl font-semibold text-[#1B3829] mt-1.5 group-hover:text-[#1B3829] transition-colors">{isEn ? item.enTitle : item.title}</h3>
+                        <p className="text-xs text-[#1B3829]/65 mt-1">{isEn ? item.enArtist : item.artist}</p>
+                        <p className="text-sm text-[#1B3829]/80 leading-relaxed mt-3 line-clamp-3">{isEn ? item.enCurationNote : item.curationNote}</p>
+                      </div>
+                    </div>
+                    <div className="px-6 py-4 bg-white border-t border-[#C5A880]/30 flex items-center justify-between text-xs">
+                      <span className="text-[#1B3829]/75 font-medium truncate pr-2">{t('搭配：', 'Pairing: ')}{isEn ? item.enPairedMenu : item.pairedMenu}</span>
+                      <ArrowUpRight className="w-4 h-4 text-[#C5A880] shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </ScrollReveal>
+              ))}
+            </div>
+          </div>
+
+          {activeExhibition && (
+            <div className="fixed inset-0 z-50 bg-[#1B3829]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" onClick={() => setActiveExhibition(null)}>
+              <div className="max-w-4xl w-full rounded-3xl bg-white text-[#1B3829] overflow-hidden shadow-2xl border-2 border-[#C5A880]" onClick={(e) => e.stopPropagation()}>
+                <div className="grid grid-cols-1 md:grid-cols-12">
+                  <div className="md:col-span-7 bg-[#1B3829] relative min-h-[320px] sm:min-h-[440px]">
+                    <img src={activeExhibition.image} alt={activeExhibition.title} onError={(e) => { e.currentTarget.src = 'https://placehold.co/1000x800/1B3829/C5A880?text=EXHIBITION+CATALOG'; }} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-3 right-4 text-[10px] text-white/50 tracking-wider font-mono z-10 drop-shadow-sm">Photo: Unsplash</div>
+                    <div className="absolute top-4 left-4 flex items-center gap-2">
+                      <span className="px-3.5 py-1 rounded-full bg-[#1B3829]/95 border border-[#C5A880] text-[#FFFFFF] text-xs font-mono tracking-widest shadow">{activeExhibition.code}</span>
+                      <span className="px-3.5 py-1 rounded-full bg-white/95 border border-[#C5A880] text-[#1B3829] text-xs font-medium tracking-wider shadow">{isEn ? activeExhibition.enCategoryLabel : activeExhibition.categoryLabel}</span>
+                    </div>
+                  </div>
+                  <div className="md:col-span-5 p-6 sm:p-8 flex flex-col justify-between space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-semibold tracking-[0.22em] text-[#C5A880] uppercase">EXHIBITION &amp; SPACE CATALOG</span>
+                        <button onClick={() => setActiveExhibition(null)} className="p-1.5 rounded-full hover:bg-[#1B3829]/10 text-[#1B3829] shrink-0"><X className="w-5 h-5" /></button>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-semibold text-[#1B3829] leading-snug">{isEn ? activeExhibition.enTitle : activeExhibition.title}</h3>
+                        <p className="text-xs sm:text-sm font-medium text-[#1B3829] mt-1">{isEn ? activeExhibition.enArtist : activeExhibition.artist}</p>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/40 space-y-1.5 text-xs text-[#1B3829]/80">
+                        <p><strong className="text-[#1B3829]">{t('媒材與尺度：', 'Medium & Scale: ')}</strong>{isEn ? activeExhibition.enMedium : activeExhibition.medium}</p>
+                        <p><strong className="text-[#1B3829]">{t('展期與時段：', 'Period & Timing: ')}</strong>{isEn ? activeExhibition.enPeriod : activeExhibition.period}</p>
+                      </div>
+                      <p className="text-sm text-[#1B3829]/85 leading-relaxed pt-2 border-t border-[#C5A880]/30">{isEn ? activeExhibition.enCurationNote : activeExhibition.curationNote}</p>
+                    </div>
+                    <div className="space-y-3 pt-4 border-t border-[#C5A880]/30">
+                      <div className="text-xs">
+                        <span className="text-[#C5A880] font-semibold tracking-wider block">{t('策展推薦搭配體驗：', 'Curated Pairing Recommendation:')}</span>
+                        <span className="text-[#1B3829] font-medium mt-0.5 block">{isEn ? activeExhibition.enPairedMenu : activeExhibition.pairedMenu}</span>
+                      </div>
+                      <button onClick={() => handleSelectPlanFromModal(activeExhibition.pairedPlanId)} className="w-full py-3.5 rounded-full bg-[#1B3829] text-[#FFFFFF] border border-[#C5A880] text-xs font-semibold tracking-[0.18em] hover:bg-[#1B3829]/90 transition-colors flex items-center justify-center gap-1.5 shadow-md uppercase">
+                        <span>{t('預約此展演品鑑體驗', 'Book This Tasting Experience')}</span><ArrowUpRight className="w-4 h-4 text-[#C5A880]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      );
+    };
+
+    const ReservationForm = ({ t, isEn, bookingForm, setBookingForm, handleBookingSubmit, bookingError }) => (
+      <ScrollReveal delay={80} className="lg:col-span-7">
+        <form onSubmit={handleBookingSubmit} className="p-6 sm:p-10 rounded-3xl bg-white text-[#1B3829] border-2 border-[#C5A880] shadow-2xl space-y-6">
+          <div className="flex items-center justify-between border-b border-[#C5A880]/35 pb-4">
+            <h3 className="text-lg sm:text-xl font-semibold text-[#1B3829] tracking-wider">{t('填寫預約資訊', 'Reservation Details')}</h3>
+            <span className="text-xs font-semibold text-[#C5A880] tracking-widest">RESERVATION FORM</span>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold tracking-[0.2em] text-[#1B3829] uppercase mb-2">{t('1. 選擇預約體驗方案（看展與品嚐平衡規劃）', '1. Select Experience Plan (Curated Art & Taste Balance)')}</label>
+            <select value={bookingForm.plan} onChange={(e) => setBookingForm({ ...bookingForm, plan: e.target.value })} className="w-full px-4 py-3.5 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]">
+              {PLAN_OPTIONS.map((opt) => (<option key={opt.id} value={opt.id}>{isEn ? opt.en : opt.zh}</option>))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold tracking-[0.18em] text-[#1B3829] uppercase mb-2">{t('預約日期（週一公休）', 'Date (Closed Mon)')}</label>
+              <CustomDatePicker value={bookingForm.date} onChange={(newDate) => setBookingForm({ ...bookingForm, date: newDate })} t={t} isEn={isEn} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold tracking-[0.18em] text-[#1B3829] uppercase mb-2">{t('入席時段（10:00–24:00）', 'Time (10:00–24:00)')}</label>
+              <select value={bookingForm.time} onChange={(e) => setBookingForm({ ...bookingForm, time: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]">
+                <option value="10:30">{t('10:30（晨間山嵐天光）', '10:30 (Morning Mist & Light)')}</option>
+                <option value="13:30">{t('13:30（午後藝廊巡禮）', '13:30 (Afternoon Gallery Tour)')}</option>
+                <option value="15:30">{t('15:30（暮色光影午茶）', '15:30 (Twilight Shadow Tea)')}</option>
+                <option value="18:00">{t('18:00（傍晚夕陽雲海）', '18:00 (Sunset Sea of Clouds)')}</option>
+                <option value="19:30">{t('19:30（夜間璀璨夜景席）', '19:30 (Dazzling Night View)')}</option>
+                <option value="21:00">{t('21:00（深夜靜謐無咖啡因推薦）', '21:00 (Late Night Decaf Pick)')}</option>
+                <option value="22:00">{t('22:00（午夜前最後觀展場次）', '22:00 (Last Exhibition Entry)')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold tracking-[0.18em] text-[#1B3829] uppercase mb-2">{t('貴賓人數', 'Guests')}</label>
+              <select value={bookingForm.guests} onChange={(e) => setBookingForm({ ...bookingForm, guests: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]">
+                <option value="1">1 {t('位', 'Pax')}</option>
+                <option value="2">2 {t('位', 'Pax')}</option>
+                <option value="3">3 {t('位', 'Pax')}</option>
+                <option value="4">4 {t('位', 'Pax')}</option>
+                <option value="5-6">5–6 {t('位（沙龍長桌）', 'Pax (Salon Table)')}</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold tracking-[0.2em] text-[#1B3829] uppercase">{t('2. 選擇上山交通與禮賓接送方式', '2. Select Transportation & Transfer Service')}</label>
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { id: 'self_drive', title: t('自行駕車前往（保留館內專屬停車位）', 'Self-Driving (Reserved Parking Included)'), price: t('免費禮遇', 'Complimentary'), sub: t('預約成功後系統自動保留專屬車位一席，報到時由禮賓人員引導泊車。', 'A dedicated parking space will be reserved automatically upon confirmation. Valet guided upon arrival.') },
+                { id: 'chauffeur_oneway', title: t('預約私人專車接送 — 單程（上山 或 下山）', 'Private Transfer — One-way'), price: t('NT$ 1,200 / 趟', 'NT$ 1,200 / Trip'), sub: t('豪華禮賓專車台北市區指定地點接駁（每車最多乘載 3 位貴賓）。', 'Luxury point-to-point transfer from a specified Taipei City location (Max 3 guests per car).') },
+                { id: 'chauffeur_roundtrip', title: t('預約私人專車接送 — 雙程往返（上山 ＋ 下山）', 'Private Transfer — Roundtrip'), price: t('NT$ 2,200 / 往返', 'NT$ 2,200 / Roundtrip'), sub: t('含台北市區去程接駁與夜間離場專屬候車禮遇（每車最多乘載 3 位貴賓）。', 'Includes arrival transfer and exclusive departure waiting service (Max 3 guests per car).') }
+              ].map((opt) => {
+                const checked = bookingForm.transport === opt.id;
+                return (
+                  <div key={opt.id} onClick={() => setBookingForm({ ...bookingForm, transport: opt.id })} className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start justify-between gap-4 ${checked ? 'bg-[#1B3829] border-[#C5A880] text-white shadow-md' : 'bg-[#F9F9F6] border-[#C5A880]/45 text-[#1B3829] hover:border-[#1B3829]'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-1 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${checked ? 'border-[#C5A880]' : 'border-[#1B3829]/40'}`}>
+                        {checked && <span className="w-2 h-2 rounded-full bg-[#C5A880]" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{opt.title}</p>
+                        <p className={`text-xs mt-1 ${checked ? 'text-white/80' : 'text-[#1B3829]/70'}`}>{opt.sub}</p>
+                      </div>
+                    </div>
+                    <span className={`text-xs sm:text-sm font-bold shrink-0 font-mono ${checked ? 'text-[#C5A880]' : 'text-[#C5A880]'}`}>{opt.price}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {(bookingForm.transport === 'chauffeur_oneway' || bookingForm.transport === 'chauffeur_roundtrip') && (
+              <div className="pt-2">
+                <label className="block text-xs font-semibold text-[#1B3829] mb-1.5">{t('請填寫台北市區專車接送地址（例如：信義區松仁路 / 大安區仁愛路飯店） *', 'Please enter your Taipei City pick-up/drop-off address *')}</label>
+                <input type="text" placeholder={t('請輸入台北市區上車／下車地點', 'Enter address in Taipei City')} value={bookingForm.pickupAddress} onChange={(e) => setBookingForm({ ...bookingForm, pickupAddress: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#C5A880] text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]" />
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold tracking-[0.18em] text-[#1B3829] uppercase mb-2">{t('貴賓姓名（報到核對用） *', 'Guest Name *')}</label>
+              <input type="text" placeholder={t('例如：陳語晴', 'e.g., Alex Johnson')} value={bookingForm.name} onChange={(e) => setBookingForm({ ...bookingForm, name: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold tracking-[0.18em] text-[#1B3829] uppercase mb-2">{t('聯絡電話（報到核對用） *', 'Phone Number *')}</label>
+              <input type="tel" placeholder={t('例如：0912-345-678', 'e.g., +886 912 345 678')} value={bookingForm.phone} onChange={(e) => setBookingForm({ ...bookingForm, phone: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold tracking-[0.18em] text-[#1B3829] uppercase mb-2">{t('飲食禁忌或座位偏好備註（選填）', 'Dietary Restrictions or Preferences (Optional)')}</label>
+            <input type="text" placeholder={t('例如：希望安排靠窗夜景席、飲品需更換天然低因基底', 'e.g., Window seat preferred, swap drinks to decaf base')} value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-[#F9F9F6] border border-[#C5A880]/60 text-sm text-[#1B3829] focus:outline-none focus:border-[#1B3829]" />
+          </div>
+          {bookingError && <div className="p-3.5 rounded-xl bg-red-50 border border-red-300 text-xs text-red-700 font-medium">{bookingError}</div>}
+          <button type="submit" className="w-full py-4 rounded-full bg-[#1B3829] text-[#FFFFFF] border border-[#C5A880] text-sm sm:text-base font-semibold tracking-[0.2em] hover:bg-[#1B3829]/90 transition-all shadow-lg uppercase">
+            {t('確認送出線上預約', 'CONFIRM RESERVATION')}
+          </button>
+        </form>
+      </ScrollReveal>
+    );
+
+    const LocationSection = ({ t }) => (
+      <ScrollReveal delay={180} className="lg:col-span-5 flex flex-col justify-between space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#1B3829] border border-[#C5A880]/50 space-y-4">
+          <div className="flex items-center gap-2.5 text-[#C5A880]">
+            <ShieldCheck className="w-5 h-5" />
+            <h3 className="text-base font-semibold tracking-wider">{t('賓客預約與入席須知', 'Reservation & Seating Policy')}</h3>
+          </div>
+          <ul className="space-y-3 text-xs sm:text-sm text-white/85 leading-relaxed">
+            <li className="flex items-start gap-2.5">
+              <span className="text-[#C5A880] font-bold">•</span>
+              <span><strong className="text-white">{t('純線上預約制：', 'Online Booking Only: ')}</strong>{t('為維護美術館級觀展靜謐與現做盤飾工藝，全館不提供現場候位服務。', 'To maintain museum-grade tranquility and plated dessert craftsmanship, we do not accept walk-ins.')}</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="text-[#C5A880] font-bold">•</span>
+              <span><strong className="text-white">{t('逾時 10 分鐘取消規範：', '10-Minute Late Policy: ')}</strong>{t('席次與專屬車位為您保留 10 分鐘，', 'Your seat and parking space will be held for 10 minutes. ')}<strong className="text-[#C5A880]">{t('超過預約時間 10 分鐘未報到即視同取消預約', 'Reservations are automatically cancelled if you are more than 10 minutes late')}</strong>。</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="text-[#C5A880] font-bold">•</span>
+              <span><strong className="text-white">{t('專屬停車場與專車接送：', 'Exclusive Parking & Transfer: ')}</strong>{t('館內設有專屬停車場，預約成功即保留車位；亦提供台北市區單程（NT$1,200）或往返（NT$2,200）私人專車上下山服務。', 'A parking spot is reserved upon booking confirmation. Private transfer service from Taipei City (One-way NT$1,200 / Roundtrip NT$2,200) is also available.')}</span>
+            </li>
+          </ul>
+        </div>
+        <div className="rounded-3xl overflow-hidden border-2 border-[#C5A880]/60 bg-white text-[#1B3829] flex-1 flex flex-col shadow-xl">
+          <div className="p-5 border-b border-[#C5A880]/30 flex items-center justify-between bg-white">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[#1B3829]" />
+              <span className="text-[10px] sm:text-xs font-semibold tracking-wider text-[#1B3829]">{t('台北市士林區仰德大道二段 138 巷 28 號', 'No. 28, Ln. 138, Sec. 2, Yangde Blvd., Shilin Dist., Taipei City')}</span>
+            </div>
+            <a href="https://maps.google.com/?q=台北市士林區仰德大道二段138巷28號" target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#C5A880] hover:underline flex items-center gap-1 shrink-0">
+              <span>{t('開啟導航', 'Open Map')}</span><ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+          <div className="w-full h-64 lg:h-full min-h-[250px] bg-[#F9F9F6]">
+            <iframe title="萃藝空間 CURATE & ROAST 陽明山位置地圖" src="https://maps.google.com/maps?width=100%25&height=600&hl=en&q=台北市士林區仰德大道二段138巷28號&t=&z=15&ie=UTF8&iwloc=B&output=embed" className="w-full h-full border-0" loading="lazy" />
+          </div>
+        </div>
+      </ScrollReveal>
+    );
+
+    const Footer = ({ t }) => (
+      <footer id="contact" className="py-16 px-4 sm:px-6 lg:px-10 bg-white text-[#1B3829]">
+        <ScrollReveal className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-[#C5A880]/40">
+          <div className="space-y-3">
+            <h3 className="text-xl font-semibold tracking-[0.2em] text-[#1B3829]">{t('萃藝空間', 'CURATE & ROAST')}</h3>
+            <p className="text-xs font-semibold tracking-[0.28em] text-[#C5A880] uppercase">{t('CURATE & ROAST', 'YANGMINGSHAN GALLERY')}</p>
+            <p className="text-xs text-[#1B3829]/70 leading-relaxed pt-2">{t('「時序空間工作室」長期跨界策展合作據點。集結當代藝術定期輪展、法式盤飾甜點、微批次單品咖啡與陽明山夜景視野的感官沙龍。', 'A collaborative physical venue by Chrono Space Studio. A sensory salon combining regular contemporary art rotations, French plated desserts, micro-batch specialty coffee, and panoramic night views of Yangmingshan.')}</p>
+          </div>
+          <div className="space-y-3 text-xs sm:text-sm">
+            <h4 className="text-xs font-semibold tracking-[0.25em] text-[#C5A880] uppercase">{t('營業資訊 HOURS & LOCATION', 'HOURS & LOCATION')}</h4>
+            <div className="space-y-2 text-[#1B3829]/85">
+              <p className="flex items-start gap-2"><MapPin className="w-4 h-4 text-[#1B3829] shrink-0 mt-0.5" /><span>{t('台北市士林區仰德大道二段 138 巷 28 號（陽明山永公路秘境山腰帶）', 'No. 28, Ln. 138, Sec. 2, Yangde Blvd., Shilin Dist., Taipei City')}</span></p>
+              <p className="flex items-start gap-2"><Clock className="w-4 h-4 text-[#1B3829] shrink-0 mt-0.5" /><span>{t('週二至週日 10:00 – 24:00', 'Tue – Sun 10:00 – 24:00')}<span className="block text-[#C5A880] font-medium text-xs mt-0.5">{t('每週一固定公休', 'Closed on Mondays')}</span></span></p>
+            </div>
+          </div>
+          <div className="space-y-3 text-xs sm:text-sm">
+            <h4 className="text-xs font-semibold tracking-[0.25em] text-[#C5A880] uppercase">{t('交通與停車 ACCESS & PARKING', 'ACCESS & PARKING')}</h4>
+            <div className="space-y-2 text-[#1B3829]/85">
+              <p className="flex items-start gap-2"><Car className="w-4 h-4 text-[#1B3829] shrink-0 mt-0.5" /><span>{t('位於陽明山秘境路段，建議自行開車前往。', 'Located in a secret Yangmingshan route; driving is recommended.')}</span></p>
+            </div>
+          </div>
+          <div className="space-y-3 text-xs sm:text-sm">
+            <h4 className="text-xs font-semibold tracking-[0.25em] text-[#C5A880] uppercase">{t('聯絡與策展洽詢 CONTACT', 'CONTACT & INQUIRIES')}</h4>
+            <div className="space-y-2.5 text-[#1B3829]/85">
+              <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-[#1B3829] shrink-0" /><a href="tel:02-2861-9473" className="hover:text-[#C5A880] font-medium">02-2861-9473</a></p>
+              <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-[#1B3829] shrink-0" /><a href="mailto:concierge@curateandroast.tw" className="hover:text-[#C5A880] break-all">concierge@curateandroast.tw</a></p>
+              <p className="flex items-center gap-2"><Instagram className="w-4 h-4 text-[#1B3829] shrink-0" /><a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-[#C5A880]">@curateandroast.taipei</a></p>
+            </div>
+          </div>
+        </ScrollReveal>
+        <div className="max-w-7xl mx-auto pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#1B3829]/60">
+          <p>© 2026 {t('萃藝空間', 'CURATE & ROAST')}. All Rights Reserved. <span className="opacity-60 ml-1">| Demo images sourced from Unsplash.</span></p>
+          <p className="tracking-widest font-medium text-[#1B3829]">CURATED IN PARTNERSHIP WITH CHRONO SPACE STUDIO</p>
+        </div>
+      </footer>
+    );
+
+    const BookingSuccessModal = ({ t, isEn, showBookingSuccessModal, setShowBookingSuccessModal, confirmedBookingSnapshot, getTransportDetails }) => {
+      if (!showBookingSuccessModal || !confirmedBookingSnapshot) return null;
+
+      return (
+        <div className="fixed inset-0 z-50 bg-[#1B3829]/85 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowBookingSuccessModal(false)}>
+          <div className="max-w-xl w-full rounded-3xl bg-[#FFFFFF] border-2 border-[#C5A880] p-6 sm:p-9 text-[#1B3829] shadow-2xl space-y-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-[#1B3829] border border-[#C5A880] flex items-center justify-center text-white"><CheckCircle2 className="w-6 h-6" /></div>
+                <div>
+                  <span className="text-[11px] font-semibold tracking-[0.25em] text-[#C5A880] uppercase">RESERVATION CONFIRMED</span>
+                  <h3 className="text-xl sm:text-2xl font-medium text-[#1B3829]">{t('線上預約已成功送出', 'Reservation Successfully Submitted')}</h3>
+                </div>
+              </div>
+              <button onClick={() => setShowBookingSuccessModal(false)} className="p-2 rounded-full hover:bg-[#1B3829]/10 text-[#1B3829]/80"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 rounded-2xl bg-[#F9F9F6] border-2 border-[#C5A880] text-sm sm:text-base text-[#1B3829] leading-relaxed font-medium shadow-inner">
+              {t('「本店採線上預約制，不提供現場候位等服務，造成不便請見諒，另外，本店設有專屬停車場，預約成功後將為您保留專屬車位，屆時報到時提供姓名、電話即會為您帶位，謝謝。」', '"Our venue operates strictly on an online reservation basis; we do not accept walk-ins. We apologize for any inconvenience. A dedicated parking space will be reserved for you upon booking confirmation. Please provide your name and phone number upon arrival for valet seating. Thank you."')}
+            </div>
+            <div className="p-4 rounded-2xl bg-white border border-[#C5A880]/40 space-y-2 text-xs sm:text-sm">
+              <div className="flex justify-between"><span className="text-[#1B3829]/70">{t('預約貴賓：', 'Guest Name: ')}</span><span className="font-medium text-[#1B3829]">{confirmedBookingSnapshot.name}（{confirmedBookingSnapshot.phone}）</span></div>
+              <div className="flex justify-between"><span className="text-[#1B3829]/70">{t('預約時間：', 'Booking Time: ')}</span><span className="font-medium text-[#1B3829]">{confirmedBookingSnapshot.date} · {confirmedBookingSnapshot.time}（{confirmedBookingSnapshot.guests} {t('位', 'Pax')}）</span></div>
+              <div className="flex justify-between"><span className="text-[#1B3829]/70">{t('體驗方案：', 'Experience Plan: ')}</span><span className="font-medium text-[#1B3829] text-right truncate max-w-[200px]">{isEn ? PLAN_OPTIONS.find(p => p.id === confirmedBookingSnapshot.plan)?.en : PLAN_OPTIONS.find(p => p.id === confirmedBookingSnapshot.plan)?.zh}</span></div>
+              <div className="flex justify-between"><span className="text-[#1B3829]/70">{t('交通禮賓方式：', 'Transfer / Access: ')}</span><span className="font-medium text-[#1B3829] text-right">{getTransportDetails(confirmedBookingSnapshot.transport).label}</span></div>
+              {confirmedBookingSnapshot.pickupAddress && <div className="flex justify-between"><span className="text-[#1B3829]/70">{t('專車接送地址：', 'Pick-up Address: ')}</span><span className="font-medium text-[#1B3829] text-right">{confirmedBookingSnapshot.pickupAddress}</span></div>}
+              <p className="text-[11px] text-[#C5A880] pt-2 border-t border-[#C5A880]/25">* {t('溫馨提醒：超過預約時間 10 分鐘未報到即視同取消預約。', 'Reminder: Reservations are cancelled if you arrive more than 10 minutes late.')}</p>
+            </div>
+            <button onClick={() => setShowBookingSuccessModal(false)} className="w-full py-3.5 rounded-full bg-[#1B3829] text-[#FFFFFF] text-sm font-semibold tracking-[0.2em] hover:bg-[#1B3829]/90 border border-[#C5A880] transition-colors uppercase">{t('我已了解，完成預約確認', 'UNDERSTOOD & CONFIRMED')}</button>
+          </div>
+        </div>
+      );
+    };
+
+    /* ==========================================
+     * MAIN APP COMPONENT (Orchestrator)
+     * ========================================== */
+
+    function App() {
+      const [language, setLanguage] = useState('zh-TW');
+      const isEn = language.startsWith('en');
+      const isUK = language === 'en-GB';
+      const t = (zh, enUS, enGB = enUS) => isEn ? (isUK ? enGB : enUS) : zh;
+
+      const scrollToSection = (id) => {
+        const el = document.getElementById(id);
+        if (el) { el.scrollIntoView({ behavior: 'smooth' }); }
+      };
+
+      const [activeMenuItem, setActiveMenuItem] = useState(null);
+      const [activeExhibition, setActiveExhibition] = useState(null);
+
+      const [bookingForm, setBookingForm] = useState({
+        plan: 'plan1', date: '2026-11-20', time: '13:30', guests: '2',
+        transport: 'self_drive', pickupAddress: '', name: '', phone: '', notes: ''
+      });
+      const [bookingError, setBookingError] = useState('');
+      const [showBookingSuccessModal, setShowBookingSuccessModal] = useState(false);
+      const [confirmedBookingSnapshot, setConfirmedBookingSnapshot] = useState(null);
+
+      const handleSelectPlanFromModal = (planId) => {
+        setBookingForm((prev) => ({ ...prev, plan: planId }));
+        setActiveExhibition(null);
+        scrollToSection('reservation');
+      };
+
+      const handleBookingSubmit = (e) => {
+        e.preventDefault();
+        setBookingError('');
+        if (!bookingForm.name.trim() || !bookingForm.phone.trim()) {
+          setBookingError(t('請填寫完整預約人姓名與聯絡電話，以便為您保留席次與專屬車位。', 'Please provide your full name and phone number to secure your reservation and parking space.'));
+          return;
+        }
+        if ((bookingForm.transport === 'chauffeur_oneway' || bookingForm.transport === 'chauffeur_roundtrip') && !bookingForm.pickupAddress.trim()) {
+          setBookingError(t('您選擇了私人專車接送服務，請填寫台北市區上車／下車地址以利安排禮賓車隊。', 'You selected private transfer. Please provide your pick-up/drop-off address in Taipei City.'));
+          return;
+        }
+
+        if (bookingForm.time === '19:30') {
+          setBookingError(t('您所預約時段已滿，請另選其他時段，感謝您的配合。', 'The selected time slot is fully booked. Please choose another time. Thank you for your cooperation.'));
+          return;
+        }
+
+        setConfirmedBookingSnapshot({ ...bookingForm });
+        setShowBookingSuccessModal(true);
+      };
+
+      const getTransportDetails = (type) => {
+        switch (type) {
+          case 'chauffeur_oneway': return { label: t('預約私人專車接送（單程上山 或 下山）', 'Private Transfer (One-way)', 'Private Transfer (One-way)'), fee: t('NT$ 1,200 / 趟', 'NT$ 1,200 / Trip', 'NT$ 1,200 / Trip'), desc: t('豪華禮賓專車台北市區點對點接送（每車最多 3 位貴賓）', 'Luxury point-to-point transfer from Taipei City (Max 3 guests per car)') };
+          case 'chauffeur_roundtrip': return { label: t('預約私人專車接送（雙程往返：上山 ＋ 下山）', 'Private Transfer (Roundtrip)'), fee: t('NT$ 2,200 / 往返', 'NT$ 2,200 / Roundtrip'), desc: t('含去程接駁與夜間離場專屬候車禮遇（每車最多 3 位貴賓）', 'Includes arrival transfer and exclusive departure waiting service (Max 3 guests)') };
+          default: return { label: t('自行駕車前往（保留館內專屬停車位）', 'Self-Driving (Reserved Parking Included)'), fee: t('免費禮遇（預約自動保留車位）', 'Complimentary (Parking auto-reserved)'), desc: t('抵達陽明山仰德大道二段 138 巷 28 號時，報姓名與電話即有專人引導泊車', 'Valet service available upon arrival at our Yangmingshan venue') };
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-[#FFFFFF] text-[#1B3829] font-sans antialiased selection:bg-[#C5A880] selection:text-[#FFFFFF]">
+          <Navbar language={language} setLanguage={setLanguage} t={t} isEn={isEn} scrollToSection={scrollToSection} />
+          <HeroSection t={t} scrollToSection={scrollToSection} />
+          <AboutSection t={t} isUK={isUK} />
+          <MenuSection t={t} isEn={isEn} scrollToSection={scrollToSection} setBookingForm={setBookingForm} activeMenuItem={activeMenuItem} setActiveMenuItem={setActiveMenuItem} />
+          <Gallery t={t} isEn={isEn} scrollToSection={scrollToSection} activeExhibition={activeExhibition} setActiveExhibition={setActiveExhibition} handleSelectPlanFromModal={handleSelectPlanFromModal} />
+          
+          <section id="reservation" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-10 bg-[#1B3829] text-white border-b border-[#C5A880]/40 overflow-hidden">
+            <div className="max-w-7xl mx-auto">
+              <ScrollReveal className="pb-10 border-b border-[#C5A880]/35">
+                <span className="text-xs font-semibold tracking-[0.3em] text-[#C5A880] uppercase">04 / ONLINE RESERVATION &amp; CHAUFFEUR SERVICE</span>
+                <h2 className="text-3xl sm:text-4xl font-light tracking-wider text-white mt-3">{t('線上預約席次・專屬保留車位與私人專車接送', 'Online Reservation · VIP Parking & Private Chauffeur Transfer')}</h2>
+                <p className="text-sm text-white/80 mt-2">{t('全館採純線上預約制，不提供現場候位。超過預約時間 10 分鐘未報到，系統將自動視同取消預約。', 'Online booking only; no walk-ins accepted. Reservations are automatically cancelled if you are more than 10 minutes late.')}</p>
+              </ScrollReveal>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 pt-12">
+                <ReservationForm t={t} isEn={isEn} bookingForm={bookingForm} setBookingForm={setBookingForm} handleBookingSubmit={handleBookingSubmit} bookingError={bookingError} />
+                <LocationSection t={t} />
+              </div>
+            </div>
+          </section>
+
+          <Footer t={t} />
+          <BookingSuccessModal t={t} isEn={isEn} showBookingSuccessModal={showBookingSuccessModal} setShowBookingSuccessModal={setShowBookingSuccessModal} confirmedBookingSnapshot={confirmedBookingSnapshot} getTransportDetails={getTransportDetails} />
+        </div>
+      );
+    }
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
